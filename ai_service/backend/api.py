@@ -76,6 +76,31 @@ class SyllabusRequest(BaseModel):
 # --------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def sanitize_lesson_script(text: str) -> str:
+    """Remove Markdown formatting while preserving lesson content."""
+    if not isinstance(text, str):
+        return ""
+
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"(?m)^\s*```[^\n]*$", "", text)
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = re.sub(r"__(.*?)__", r"\1", text)
+    text = re.sub(r"~~(.*?)~~", r"\1", text)
+    text = re.sub(r"\*([^*\n]+)\*", r"\1", text)
+    text = re.sub(r"_([^_\n]+)_", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"(?m)^\s*[-+*]\s+", "", text)
+    text = re.sub(r"(?m)^\s*\d+[.)]\s+", "", text)
+
+    lines = [line.strip() for line in text.splitlines()]
+    text = "\n".join(lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+
 async def generate_tts(text: str, output_file: str):
     communicate = edge_tts.Communicate(
         text=text,
@@ -292,7 +317,7 @@ def process_lesson(data: LessonRequest, base_filename: str):
                 contents=prompt
             )
 
-            script = response.text.strip().replace("\n", " ")
+            script = sanitize_lesson_script(response.text)
 
             print("✅ Gemini response generated")
 
@@ -315,7 +340,7 @@ def process_lesson(data: LessonRequest, base_filename: str):
                     max_tokens=300,
                 )
 
-                script = groq_response.choices[0].message.content.strip().replace("\n", " ")
+                script = sanitize_lesson_script(groq_response.choices[0].message.content)
 
                 print("✅ Groq fallback response generated")
 
