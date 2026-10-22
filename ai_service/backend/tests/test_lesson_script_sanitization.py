@@ -67,3 +67,20 @@ def test_plain_text_is_preserved(sanitize_lesson_script):
     text = "Python is useful for data analysis."
 
     assert sanitize_lesson_script(text) == text
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("![Python logo](https://example.com/logo.png)", "Python logo"),
+        (r"Python \*is\* useful", "Python *is* useful"),
+        ("**Bold and _italic_ text**", "Bold and italic text"),
+        ("> Important lesson", "Important lesson"),
+        ("<p>Hello <b>world</b></p>", "Hello world"),
+        ("Visit <https://example.com>", "Visit https://example.com"),
+        ("~~old~~ and **new**", "old and new"),
+        ("### Heading\n\nText", "Heading\n\nText"),
+        ("[broken link](unfinished", "[broken link](unfinished"),
+    ],
+)
+def test_handles_additional_markdown_cases(sanitize_lesson_script, text, expected):
+    assert sanitize_lesson_script(text) == expected

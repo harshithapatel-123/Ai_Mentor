@@ -77,27 +77,54 @@ class SyllabusRequest(BaseModel):
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def sanitize_lesson_script(text: str) -> str:
-    """Remove Markdown formatting while preserving lesson content."""
+    """Remove common Markdown and HTML formatting while preserving readable text."""
     if not isinstance(text, str):
         return ""
 
     text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = text.replace(r"\*", "ESCAPEDASTERISKPLACEHOLDER")
+
+    # Remove fenced code markers, retaining the code content.
     text = re.sub(r"(?m)^\s*```[^\n]*$", "", text)
-    text = re.sub(r"`([^`]*)`", r"\1", text)
-    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
-    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
-    text = re.sub(r"__(.*?)__", r"\1", text)
-    text = re.sub(r"~~(.*?)~~", r"\1", text)
-    text = re.sub(r"\*([^*\n]+)\*", r"\1", text)
-    text = re.sub(r"_([^_\n]+)_", r"\1", text)
+    text = re.sub(r"(?m)^\s*~~~[^\n]*$", "", text)
+
+    # Convert images and links to their readable labels.
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"<((?:https?://|mailto:)[^ >]+)>", r"\1", text)
+
+    # Remove HTML tags, preserving their text content.
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</(?:p|div|li|h[1-6])\s*>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>\n]*>", "", text)
+
+    # Remove heading, blockquote, list and horizontal-rule markers.
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
+    text = re.sub(r"(?m)^\s{0,3}>\s?", "", text)
+    text = re.sub(r"(?m)^\s*([-*_]\s*){3,}$", "", text)
     text = re.sub(r"(?m)^\s*[-+*]\s+", "", text)
     text = re.sub(r"(?m)^\s*\d+[.)]\s+", "", text)
 
+    # Remove inline code and emphasis markers, including nested emphasis.
+    text = re.sub(r"`+([^`]*?)`+", r"\1", text)
+    for _ in range(3):
+        text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+        text = re.sub(r"__(.*?)__", r"\1", text)
+        text = re.sub(r"~~(.*?)~~", r"\1", text)
+        text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"\1", text)
+        text = re.sub(r"(?<!_)_([^_\n]+)_(?!_)", r"\1", text)
+
+    # Unescape common Markdown punctuation.
+    text = re.sub(r"\\([\\`*_{}\[\]()#+.!|>~-])", lambda match: match.group(1), text)
+
+    # Normalize whitespace while preserving paragraph breaks.
     lines = [line.strip() for line in text.splitlines()]
     text = "\n".join(lines)
     text = re.sub(r"\n{3,}", "\n\n", text)
+
+    text = text.replace("ESCAPEDASTERISKPLACEHOLDER", "*")
     return text.strip()
+
 
 
 
