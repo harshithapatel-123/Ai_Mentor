@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import re
 from pathlib import Path
 
@@ -83,4 +83,24 @@ def test_plain_text_is_preserved(sanitize_lesson_script):
     ],
 )
 def test_handles_additional_markdown_cases(sanitize_lesson_script, text, expected):
+    assert sanitize_lesson_script(text) == expected
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("---\nHello", "Hello"),
+        ("~~Old~~", "Old"),
+        ("<div>Hello</div>", "Hello"),
+        ("Visit https://example.com", "Visit https://example.com"),
+        ("Hello 😊 ★", "Hello 😊 ★"),
+        ("**", ""),
+        ("   \n  ", ""),
+        ("Text\n\n\n\nMore text", "Text\n\nMore text"),
+        (r"Python \# basics", "Python # basics"),
+        ("1. First\n2. Second", "First\nSecond"),
+    ],
+)
+def test_handles_requested_markdown_edge_cases(
+    sanitize_lesson_script, text, expected
+):
     assert sanitize_lesson_script(text) == expected

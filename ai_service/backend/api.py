@@ -123,6 +123,9 @@ def sanitize_lesson_script(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     text = text.replace("ESCAPEDASTERISKPLACEHOLDER", "*")
+    if not re.search(r"[A-Za-z0-9]", text):
+        return ""
+
     return text.strip()
 
 
@@ -380,6 +383,11 @@ def process_lesson(data: LessonRequest, base_filename: str):
                 }
 
                 return
+
+        if not script.strip():
+            print("❌ Generated lesson script is empty.")
+            job_status[base_filename] = {"status": "failed"}
+            return
 
         print(f"📝 Generated text: {script}")
 
